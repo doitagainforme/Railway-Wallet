@@ -51,6 +51,7 @@ jobs:
       - name: Build Electron app for ARM64
         working-directory: ./desktop
         env:
+          CI: "false"
           DISABLE_ESLINT_PLUGIN: "true"
           ESLINT_NO_DEV_ERRORS: "true"
         run: |
