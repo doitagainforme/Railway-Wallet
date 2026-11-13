@@ -1,0 +1,53 @@
+name: Build Railway Wallet ARM64
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Enable Corepack and Yarn
+        run: |
+          corepack enable
+          cd desktop
+          corepack prepare yarn@4.5.1 --activate
+
+      - name: Install dependencies
+        working-directory: ./desktop
+        run: yarn install
+
+      - name: Build Electron app for ARM64
+        working-directory: ./desktop
+        env:
+          DISABLE_ESLINT_PLUGIN: "true"
+          ESLINT_NO_DEV_ERRORS: "true"
+        run: |
+          export REACT_APP_VERSION=$(node -p "require('./package.json').version")
+          echo "APP_VER=$REACT_APP_VERSION" >> $GITHUB_ENV
+          yarn run build-electron
+          npx electron-builder --linux --arm64 --dir
+
+      - name: Pack unpacked app
+        working-directory: ./desktop/dist
+        run: tar -czf railway-arm64.tar.gz linux-arm64-unpacked
+
+      - name: Publish to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest-arm64 --yes || true
+          git push --delete origin latest-arm64 || true
+          gh release create latest-arm64 ./desktop/dist/railway-arm64.tar.gz \
+            --title "Railway Wallet ARM64 ($APP_VER)" \
+            --notes "Сборка версии $APP_VER для Linux ARM64"
