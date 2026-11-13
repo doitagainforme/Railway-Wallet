@@ -12,6 +12,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install system build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3-setuptools libsecret-1-dev libx11-dev libxkbfile-dev libkrb5-dev
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -25,6 +30,8 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./desktop
+        env:
+          SKIP_POSTINSTALL: "1"
         run: yarn install --no-immutable
 
       - name: Build Electron app for ARM64
@@ -33,10 +40,11 @@ jobs:
           DISABLE_ESLINT_PLUGIN: "true"
           ESLINT_NO_DEV_ERRORS: "true"
         run: |
+          yarn patch-package || true
           export REACT_APP_VERSION=$(node -p "require('./package.json').version")
           echo "APP_VER=$REACT_APP_VERSION" >> $GITHUB_ENV
           yarn run build-electron
-          npx electron-builder --linux --arm64 --dir
+          yarn electron-builder --linux --arm64 --dir
 
       - name: Pack unpacked app
         working-directory: ./desktop/dist
